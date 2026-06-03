@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>F 드랍더비트 — 학점 방어 서바이벌 | 예술공학개론 10조</title>
+  <meta name="description" content="사방에서 쏟아지는 F학점과 과제 폭탄을 피해 A+를 먹으며 종강까지 버텨내는 대학생 공감 생존 아케이드 게임">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+KR:wght@300;400;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --card-bg: rgba(20, 20, 35, 0.85);
+      --neon-green: #39ff14;
+      --neon-red: #ff2442;
+      --neon-blue: #00d4ff;
+      --neon-yellow: #ffe600;
+      --neon-pink: #ff00ff;
+      --text-main: #f0f0ff;
+      --text-muted: #8888aa;
+      --border: rgba(57, 255, 20, 0.2);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .site-header {
+      text-align: center;
+      padding: 50px 20px 30px;
+      background: linear-gradient(180deg, rgba(57, 255, 20, 0.06) 0%, transparent 100%);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .site-header .tag {
+      font-size: 0.75rem;
+      letter-spacing: 4px;
+      color: var(--neon-green);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      display: block;
+    }
+
+    .site-header h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: clamp(1.8rem, 5vw, 3.5rem);
+      font-weight: 900;
+      letter-spacing: 4px;
+      color: var(--text-main);
+      text-shadow: 0 0 20px var(--neon-green), 0 0 60px rgba(57, 255, 20, 0.3);
+      line-height: 1.2;
+      margin-bottom: 10px;
+    }
+
+    .site-header .sub {
+      font-size: 1rem;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+    }
+
+    .game-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      gap: 0;
+    }
+
+    .game-ui-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      max-width: 800px;
+      padding: 12px 20px;
+      background: rgba(10, 10, 20, 0.95);
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: 10px 10px 0 0;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .ui-stat { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+    .ui-label { font-size: 0.65rem; letter-spacing: 2px; color: var(--text-muted); text-transform: uppercase; }
+    .ui-value { font-family: 'Orbitron', monospace; font-size: 1rem; font-weight: 700; color: var(--neon-green); }
+
+    .hp-bar-wrap { flex: 1; min-width: 120px; }
+    .hp-track {
+      width: 100%; height: 10px;
+      background: rgba(255, 36, 66, 0.2);
+      border-radius: 5px; overflow: hidden;
+      border: 1px solid rgba(255, 36, 66, 0.4);
+    }
+    #hp-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--neon-red), #ff8800);
+      border-radius: 5px;
+      transition: width 0.3s ease;
+      width: 100%;
+    }
+
+    .timer-val { color: var(--neon-blue); }
+    .score-val { color: var(--neon-yellow); }
+    .phase-val { color: var(--neon-pink); }
+
+    #gameCanvas {
+      display: block;
+      width: 100%;
+      max-width: 800px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      cursor: default;
+      touch-action: none;
+    }
+
+    #damage-flash {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      opacity: 0;
+      border: 6px solid var(--neon-red);
+      box-shadow: inset 0 0 40px rgba(255, 36, 66, 0.6);
+      transition: opacity 0.08s ease;
+      z-index: 5;
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 800px;
+    }
+
+    #game-overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(5, 5, 15, 0.92);
+      z-index: 10;
+      text-align: center;
+      padding: 30px;
+    }
+
+    #overlay-title {
+      font-family: 'Orbitron', monospace;
+      font-size: clamp(1.4rem, 3vw, 2.2rem);
+      font-weight: 900;
+      color: var(--neon-green);
+      text-shadow: 0 0 20px var(--neon-green);
+      margin-bottom: 12px;
+      line-height: 1.3;
+    }
+
+    #overlay-sub {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      line-height: 1.7;
+      max-width: 460px;
+    }
+
+    #overlay-grade {
+      font-family: 'Orbitron', monospace;
+      font-size: 2.5rem;
+      font-weight: 900;
+      margin: 12px 0;
+      text-shadow: 0 0 30px currentColor;
+    }
+
+    #overlay-final-score {
+      font-size: 0.9rem;
+      color: var(--neon-yellow);
+      margin-bottom: 24px;
+      letter-spacing: 1px;
+    }
+
+    .btn-start {
+      font-family: 'Orbitron', monospace;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 3px;
+      padding: 14px 40px;
+      background: transparent;
+      border: 2px solid var(--neon-green);
+      color: var(--neon-green);
+      border-radius: 4px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.3s;
+    }
+
+    .btn-start:hover {
+      background: var(--neon-green);
+      color: #000;
+      box-shadow: 0 0 20px var(--neon-green);
+    }
+
+    .controls-hint {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 14px;
+      letter-spacing: 1px;
+    }
+
+    .info-section {
+      width: 100%;
+      max-width: 800px;
+      background: rgba(10, 10, 20, 0.95);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 10px 10px;
+      padding: 20px 24px;
+    }
+
+    .info-section summary {
+      cursor: pointer;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.8rem;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      user-select: none;
+      list-style: none;
+    }
+
+    .info-section summary::after { content: ' ▸'; color: var(--neon-green); }
+    details[open] summary::after { content: ' ▾'; }
+
+    .info-body {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 14px;
+    }
+
+    .info-card {
+      background: rgba(57, 255, 20, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .info-card .ic-icon { font-size: 1.6rem; margin-bottom: 6px; }
+    .info-card .ic-name { font-family: 'Orbitron', monospace; font-size: 0.75rem; color: var(--neon-green); margin-bottom: 4px; }
+    .info-card .ic-desc { font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; }
+
+    .controls-row { margin-top: 16px; display: flex; gap: 12px; flex-wrap: wrap; }
+    .ctrl-badge {
+      background: rgba(0, 212, 255, 0.08);
+      border: 1px solid rgba(0, 212, 255, 0.3);
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 0.8rem;
+      color: var(--neon-blue);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .page-section {
+      width: 100%;
+      max-width: 900px;
+      margin: 60px auto;
+      padding: 0 24px;
+    }
+
+    .section-label {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 4px;
+      color: var(--neon-green);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    .statement-body {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 36px;
+      line-height: 2;
+      color: #c0c0d8;
+      font-size: 0.97rem;
+    }
+
+    .statement-body p { margin-bottom: 16px; }
+    .statement-body p:last-child { margin-bottom: 0; }
+    .statement-body .highlight { color: var(--neon-green); font-weight: 700; }
+    .statement-body .question {
+      border-left: 3px solid var(--neon-green);
+      padding-left: 18px;
+      margin: 24px 0;
+      font-style: italic;
+      color: var(--text-main);
+    }
+
+    footer.site-footer {
+      text-align: center;
+      padding: 30px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      letter-spacing: 1px;
+    }
+
+    @media (max-width: 600px) {
+      .site-header { padding: 30px 16px 20px; }
+      .game-ui-bar { padding: 10px 14px; }
+      .statement-body { padding: 22px; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header class="site-header">
+    <span class="tag">예술공학개론 토이 프로젝트 10조</span>
+    <h1>F 드랍더비트</h1>
+    <p class="sub">학점 방어 서바이벌 — 종강까지만 버텨라</p>
+  </header>
+
+  <section class="game-section">
+
+    <div class="game-ui-bar">
+      <div class="ui-stat hp-bar-wrap">
+        <div class="ui-label">🧠 멘탈 HP</div>
+        <div class="hp-track"><div id="hp-fill"></div></div>
+      </div>
+      <div class="ui-stat">
+        <div class="ui-label">⏱ 남은 학기</div>
+        <div class="ui-value timer-val" id="ui-timer">60s</div>
+      </div>
+      <div class="ui-stat">
+        <div class="ui-label">🏆 학점 점수</div>
+        <div class="ui-value score-val" id="ui-score">0</div>
+      </div>
+      <div class="ui-stat">
+        <div class="ui-label">📅 학기 페이즈</div>
+        <div class="ui-value phase-val" id="ui-phase">중간고사 전</div>
+      </div>
+    </div>
+
+    <div class="canvas-wrapper">
+      <canvas id="gameCanvas" width="800" height="500"></canvas>
+      <div id="damage-flash"></div>
+
+      <div id="game-overlay">
+        <div id="overlay-title">F 드랍더비트</div>
+        <div id="overlay-sub">쏟아지는 F학점과 과제 폭탄을 피하고<br>A+와 커피를 먹으며 종강까지 버텨라!</div>
+        <div id="overlay-grade" style="display:none;"></div>
+        <div id="overlay-final-score" style="display:none;"></div>
+        <button class="btn-start" id="btn-start">시작하기</button>
+        <div class="controls-hint">마우스 이동 / ← → 방향키 / 터치 드래그</div>
+      </div>
+    </div>
+
+    <div class="info-section">
+      <details open>
+        <summary>How to Play — 게임 방법</summary>
+        <div class="info-body">
+          <div class="info-card">
+            <div class="ic-icon">❌</div>
+            <div class="ic-name">F학점</div>
+            <div class="ic-desc">맞으면 HP -30. 화면이 붉게 점멸하며 멘탈이 붕괴됩니다.</div>
+          </div>
+          <div class="info-card">
+            <div class="ic-icon">📁</div>
+            <div class="ic-name">과제 폭탄</div>
+            <div class="ic-desc">HP -20. 크기가 커서 피하기 어렵습니다. 조별과제는 특대형!</div>
+          </div>
+          <div class="info-card">
+            <div class="ic-icon">⭐</div>
+            <div class="ic-name">A+ 학점</div>
+            <div class="ic-desc">먹으면 +100점. HP도 소폭 회복됩니다.</div>
+          </div>
+          <div class="info-card">
+            <div class="ic-icon">☕</div>
+            <div class="ic-name">커피</div>
+            <div class="ic-desc">HP +20 회복. 타이머가 줄어들수록 더욱 중요한 생명줄!</div>
+          </div>
+          <div class="info-card">
+            <div class="ic-icon">🏁</div>
+            <div class="ic-name">종강 목표</div>
+            <div class="ic-desc">60초를 HP 0 되지 않고 버티면 종강! 점수에 따라 등급 부여.</div>
+          </div>
+          <div class="info-card">
+            <div class="ic-icon">📈</div>
+            <div class="ic-name">난이도 상승</div>
+            <div class="ic-desc">15초마다 페이즈 상승. 낙하 속도가 빨라지고 밀도가 증가.</div>
+          </div>
+        </div>
+        <div class="controls-row">
+          <div class="ctrl-badge">🖱️ 마우스 이동</div>
+          <div class="ctrl-badge">⌨️ ← / → 방향키</div>
+          <div class="ctrl-badge">⌨️ A / D 키</div>
+          <div class="ctrl-badge">📱 터치 드래그</div>
+        </div>
+      </details>
+    </div>
+
+  </section>
+
+  <div class="page-section">
+    <div class="section-label">Artist Statement</div>
+    <div class="statement-body">
+      <p>
+        이 작품은 <span class="highlight">대학생의 최대 생존 과제인 '학점 관리'</span>를 직관적인 회피형 아케이드 게임으로 시각화한 인터랙티브 미디어 아트입니다.
+      </p>
+      <p>
+        플레이어는 화면 위에서 끊임없이 쏟아지는 F학점, 과제 폭탄, 재수강의 공포를 피하고, A+와 커피라는 생존 자원을 먹으며 '종강'이라는 단 하나의 목표를 향해 달립니다. 시간이 흐를수록 낙하 속도는
+        빨라지고 밀도는 높아져, 플레이어는 매 순간 판단과 이동을 강요받습니다. 이것은 현실의 대학생이 마주하는 학업 스트레스 구조를 그대로 반영한 것입니다.
+      </p>
+      <div class="question">
+        "우리가 쫓는 A+와 피하려는 F는 우리를 어떻게 규정하는가?<br>
+        시스템이 내리는 평가 속에서 인간 창작자는 어떻게 멘탈을 유지하며 생존할 것인가?"
+      </div>
+      <p>
+        본 작품은 이 질문에 대한 유쾌하면서도 날카로운 답변을 시도합니다. 무거운 주제를 '놀이'의 문법으로 번역함으로써, 플레이어는 자신의 실제 경험과 게임 내 행동 사이에서 공감과 카타르시스를 동시에
+        경험합니다. 순수 HTML5 Canvas 단일 파일만으로 이 밀도 높은 피드백 시스템을 구현했습니다.
+      </p>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    &copy; 2026 F 드랍더비트 — 예술공학개론 10조 &nbsp;|&nbsp; Powered by HTML5 Canvas &amp; Vanilla JS
+  </footer>
+
+  <script>
+    // ═══════════════════════════════════════════
+    //  CONFIG & CONSTANTS
+    // ═══════════════════════════════════════════
+    const CANVAS_W = 800;
+    const CANVAS_H = 500;
+    const MAX_HP = 100;
+    const GAME_DURATION = 60;
+    const PHASE_INTERVAL = 15;
+    const PLAYER_SPEED = 8;
+    const PLAYER_W = 52;
+    const PLAYER_H = 64;
+
+    const PHASES = [
+      { name: "중간고사 전", spawnInterval: 1.2, speedMult: 1.0 },
+      { name: "중간고사 중", spawnInterval: 0.8, speedMult: 1.4 },
+      { name: "기말고사 전", spawnInterval: 0.5, speedMult: 1.9 },
+      { name: "기말고사 중", spawnInterval: 0.3, speedMult: 2.5 },
+    ];
+
+    const OBJECT_TYPES = [
+      { id: "F",      emoji: "❌", label: "F학점",   hp: -30, score: 0,   w: 44, h: 44, color: "#ff2442", prob: 30 },
+      { id: "HW",     emoji: "📁", label: "과제",     hp: -20, score: 0,   w: 52, h: 52, color: "#ff8800", prob: 25 },
+      { id: "HW2",    emoji: "😱", label: "조별과제", hp: -35, score: 0,   w: 70, h: 70, color: "#cc00ff", prob: 10 },
+      { id: "APLUS",  emoji: "⭐", label: "A+",       hp: 10,  score: 100, w: 42, h: 42, color: "#ffe600", prob: 25 },
+      { id: "COFFEE", emoji: "☕", label: "커피",     hp: 20,  score: 0,   w: 40, h: 40, color: "#00d4ff", prob: 10 },
+    ];
+
+    // ═══════════════════════════════════════════
+    //  WEB AUDIO API
+    // ═══════════════════════════════════════════
+    let audioCtx = null;
+    function getAudioCtx() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
+
+    function playTone(frequency, type, duration, volume = 0.1) {
+      try {
+        const ctx = getAudioCtx();
+        if (ctx.state === 'suspended') return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(frequency, ctx.currentTime);
+        gain.gain.setValueAtTime(volume, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function sfxDamage()   { playTone(140, 'sawtooth', 0.2, 0.15); }
+    function sfxPickup()   { playTone(880, 'sine', 0.1, 0.15); }
+    function sfxCoffee()   { playTone(587, 'sine', 0.15, 0.15); }
+    function sfxGameOver() { playTone(110, 'sawtooth', 0.6, 0.2); }
+    function sfxWin()      { playTone(523, 'sine', 0.3, 0.2); }
+
+    // ═══════════════════════════════════════════
+    //  GAME STATE
+    // ═══════════════════════════════════════════
+    let state = "idle";
+    let hp = MAX_HP;
+    let score = 0;
+    let timeLeft = GAME_DURATION;
+    let phaseIndex = 0;
+    let spawnTimer = 0;   // ✅ 시간 기반 스폰 타이머
+    let gameLoopId = null;
+    let lastTimestamp = 0; // ✅ 0으로 초기화 → 첫 프레임 dt 튀는 현상 방지
+
+    let objects = [];
+    const keys = {};
+
+    const player = {
+      x: CANVAS_W / 2,
+      y: CANVAS_H - 60,
+      w: PLAYER_W,
+      h: PLAYER_H,
+      targetX: CANVAS_W / 2,
+    };
+
+    // ═══════════════════════════════════════════
+    //  DOM REFS
+    // ═══════════════════════════════════════════
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('game-overlay');
+    const overlayTitle = document.getElementById('overlay-title');
+    const overlaySub = document.getElementById('overlay-sub');
+    const overlayGrade = document.getElementById('overlay-grade');
+    const overlayFinalScore = document.getElementById('overlay-final-score');
+    const btnStart = document.getElementById('btn-start');
+    const hpFill = document.getElementById('hp-fill');
+    const uiTimer = document.getElementById('ui-timer');
+    const uiScore = document.getElementById('ui-score');
+    const uiPhase = document.getElementById('ui-phase');
+    const damageFlashEl = document.getElementById('damage-flash');
+    const canvasWrapper = document.querySelector('.canvas-wrapper');
+
+    function resizeCanvas() {
+      const wrapperW = canvasWrapper.offsetWidth;
+      canvas.style.width = wrapperW + 'px';
+      canvas.style.height = Math.round(wrapperW * (CANVAS_H / CANVAS_W)) + 'px';
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // ═══════════════════════════════════════════
+    //  INPUTS
+    // ═══════════════════════════════════════════
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = CANVAS_W / rect.width;
+      player.targetX = (e.clientX - rect.left) * scaleX;
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = CANVAS_W / rect.width;
+      player.targetX = (e.touches[0].clientX - rect.left) * scaleX;
+    }, { passive: false });
+
+    document.addEventListener('keydown', (e) => {
+      keys[e.key] = true;
+      if (['ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+    });
+    document.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
+    // ═══════════════════════════════════════════
+    //  LOGIC FUNCTIONS
+    // ═══════════════════════════════════════════
+    function spawnObject() {
+      const total = OBJECT_TYPES.reduce((s, t) => s + t.prob, 0);
+      let r = Math.random() * total;
+      let selectedType = OBJECT_TYPES[OBJECT_TYPES.length - 1];
+      for (const t of OBJECT_TYPES) {
+        r -= t.prob;
+        if (r <= 0) { selectedType = t; break; }
+      }
+
+      const phase = PHASES[phaseIndex];
+      const speedBase = 160 + phaseIndex * 40;
+      objects.push({
+        type: selectedType,
+        x: Math.random() * (CANVAS_W - selectedType.w) + selectedType.w / 2,
+        y: -selectedType.h,
+        w: selectedType.w,
+        h: selectedType.h,
+        speed: speedBase * phase.speedMult * (0.9 + Math.random() * 0.3),
+        alive: true
+      });
+    }
+
+    function checkCollision(obj) {
+      return (
+        player.x - player.w / 2 < obj.x + obj.w / 2 &&
+        player.x + player.w / 2 > obj.x - obj.w / 2 &&
+        player.y - player.h / 2 < obj.y + obj.h / 2 &&
+        player.y + player.h / 2 > obj.y - obj.h / 2
+      );
+    }
+
+    function triggerDamageFlash() {
+      damageFlashEl.style.opacity = '1';
+      setTimeout(() => { damageFlashEl.style.opacity = '0'; }, 100);
+    }
+
+    function updateUI() {
+      hpFill.style.width = Math.max(0, (hp / MAX_HP) * 100) + '%';
+      uiTimer.textContent = Math.ceil(timeLeft) + 's';
+      uiScore.textContent = score;
+      uiPhase.textContent = PHASES[phaseIndex].name;
+    }
+
+    function getGrade() {
+      if (hp <= 0)        return { label: "🚨 학사경고", color: "#ff2442" };
+      if (score >= 1200)  return { label: "🏆 A+",       color: "#ffe600" };
+      if (score >= 700)   return { label: "📘 B+",       color: "#39ff14" };
+      if (score >= 350)   return { label: "📗 C+",       color: "#00d4ff" };
+      return                     { label: "📉 D",        color: "#ff8800" };
+    }
+
+    function endGame(isWin) {
+      cancelAnimationFrame(gameLoopId);
+      state = isWin ? 'win' : 'gameover';
+      const grade = getGrade();
+
+      if (isWin) {
+        sfxWin();
+        if (grade.label.includes("A+")) {
+          overlayTitle.textContent = '👑 역대급 수석 종강! 👑';
+          overlayTitle.style.color = '#ffe600';
+          overlaySub.innerHTML = '사방에서 쏟아지는 과제 폭탄을 예술적인 무빙으로 극복해 냈습니다!<br><span style="color:#39ff14; font-weight:bold;">교수님도 감탄한 완벽한 학점 방어 성공!</span>';
+        } else {
+          overlayTitle.textContent = '🎉 무사히 종강 성공!';
+          overlayTitle.style.color = '#39ff14';
+          overlaySub.innerHTML = '무사히 학기를 마쳤습니다!<br>축하합니다. 평점 타협에 성공하여 졸업 학점을 방어했습니다.';
+        }
+      } else {
+        sfxGameOver();
+        overlayTitle.textContent = '멘탈 붕괴...';
+        overlayTitle.style.color = '#ff2442';
+        overlaySub.innerHTML = 'HP가 0이 되어 학사경고를 받았습니다.<br>다음 학기에 설욕을 노려보세요.';
+      }
+
+      overlayGrade.textContent = grade.label;
+      overlayGrade.style.color = grade.color;
+      overlayGrade.style.display = 'block';
+      overlayFinalScore.textContent = `최종 점수: ${score}점`;
+      overlayFinalScore.style.display = 'block';
+      btnStart.textContent = '다시 도전';
+      overlay.style.display = 'flex';
+    }
+
+    // ═══════════════════════════════════════════
+    //  RENDERING
+    // ═══════════════════════════════════════════
+    function neonText(text, x, y, color, size = 14) {
+      ctx.save();
+      ctx.font = `bold ${size}px 'Orbitron', monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = color;
+      ctx.fillText(text, x, y);
+      ctx.restore();
+    }
+
+    function draw() {
+      ctx.fillStyle = '#0a0a0f';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+      // Subtle Grid
+      ctx.strokeStyle = 'rgba(57,255,20,0.04)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < CANVAS_W; x += 50) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CANVAS_H); ctx.stroke();
+      }
+      for (let y = 0; y < CANVAS_H; y += 50) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CANVAS_W, y); ctx.stroke();
+      }
+
+      // Objects
+      for (const obj of objects) {
+        if (!obj.alive) continue;
+        ctx.font = `${obj.w * 0.75}px serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(obj.type.emoji, obj.x, obj.y);
+        neonText(obj.type.label, obj.x, obj.y + obj.h * 0.6, obj.type.color, 10);
+      }
+
+      // Player
+      ctx.save();
+      ctx.shadowColor = '#39ff14';
+      ctx.shadowBlur = 15;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y - 18, 12, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffd5a0';
+      ctx.fill();
+      ctx.fillStyle = '#1a6aff';
+      ctx.fillRect(player.x - 12, player.y - 6, 24, 24);
+      ctx.fillStyle = '#333';
+      ctx.fillRect(player.x - 10, player.y + 18, 7, 12);
+      ctx.fillRect(player.x + 3, player.y + 18, 7, 12);
+      ctx.restore();
+
+      // Phase HUD
+      neonText(`📅 ${PHASES[phaseIndex].name}`, CANVAS_W / 2, 20, '#ff00ff', 13);
+    }
+
+    // ═══════════════════════════════════════════
+    //  UPDATE  (핵심 수정: 시간 기반 스폰)
+    // ═══════════════════════════════════════════
+    function update(dt) {
+      if (state !== 'playing') return;
+
+      timeLeft -= dt;
+      if (timeLeft <= 0) {
+        timeLeft = 0;
+        updateUI();
+        endGame(true);
+        return;
+      }
+
+      phaseIndex = Math.min(PHASES.length - 1, Math.floor((GAME_DURATION - timeLeft) / PHASE_INTERVAL));
+
+      // ✅ 키보드 조작
+      if (keys['ArrowLeft'] || keys['a'] || keys['A']) player.targetX -= PLAYER_SPEED * 2;
+      if (keys['ArrowRight'] || keys['d'] || keys['D']) player.targetX += PLAYER_SPEED * 2;
+
+      player.x += (player.targetX - player.x) * 0.2;
+      player.x = Math.max(player.w / 2, Math.min(CANVAS_W - player.w / 2, player.x));
+
+      // ✅ 시간 기반 스폰 (프레임레이트 독립적)
+      spawnTimer += dt;
+      if (spawnTimer >= PHASES[phaseIndex].spawnInterval) {
+        spawnObject();
+        spawnTimer = 0;
+      }
+
+      // ✅ 오브젝트 물리 & 충돌
+      for (const obj of objects) {
+        if (!obj.alive) continue;
+        obj.y += obj.speed * dt;
+
+        if (checkCollision(obj)) {
+          obj.alive = false;
+          hp = Math.max(0, Math.min(MAX_HP, hp + obj.type.hp));
+          score = Math.max(0, score + obj.type.score);
+          updateUI();
+
+          if (obj.type.hp < 0)       { triggerDamageFlash(); sfxDamage(); }
+          else if (obj.type.score > 0) { sfxPickup(); }
+          else if (obj.type.id === 'COFFEE') { sfxCoffee(); }
+
+          if (hp <= 0) { endGame(false); return; }
+        }
+
+        if (obj.y > CANVAS_H + obj.h) obj.alive = false;
+      }
+
+      objects = objects.filter(o => o.alive);
+      updateUI();
+    }
+
+    // ═══════════════════════════════════════════
+    //  GAME LOOP  (핵심 수정: dt 첫 프레임 보정)
+    // ═══════════════════════════════════════════
+    function gameLoop(timestamp) {
+      if (state !== 'playing') return;
+
+      // ✅ lastTimestamp가 0이면 첫 프레임 → dt를 0으로 처리해 튀는 현상 방지
+      const dt = lastTimestamp === 0 ? 0 : Math.min(0.05, (timestamp - lastTimestamp) / 1000);
+      lastTimestamp = timestamp;
+
+      update(dt);
+      draw();
+      gameLoopId = requestAnimationFrame(gameLoop);
+    }
+
+    // ═══════════════════════════════════════════
+    //  START / RESTART
+    // ═══════════════════════════════════════════
+    function startGame() {
+      try { getAudioCtx().resume(); } catch (e) {}
+
+      state = 'playing';
+      hp = MAX_HP;
+      score = 0;
+      timeLeft = GAME_DURATION;
+      phaseIndex = 0;
+      spawnTimer = 0;       // ✅ 스폰 타이머 초기화
+      lastTimestamp = 0;    // ✅ 첫 프레임 dt 보정을 위해 0으로 리셋
+      objects = [];
+      player.x = CANVAS_W / 2;
+      player.targetX = CANVAS_W / 2;
+
+      overlay.style.display = 'none';
+      updateUI();
+      gameLoopId = requestAnimationFrame(gameLoop);
+    }
+
+    btnStart.addEventListener('click', startGame);
+    draw(); // 초기 화면 렌더
+  </script>
+
+</body>
+</html>
